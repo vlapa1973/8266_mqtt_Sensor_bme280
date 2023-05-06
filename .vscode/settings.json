@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "system_error": "cpp"
+    },
+    "cmake.sourceDirectory": "/Users/vlapa./Yandex.Disk.localized/_MY/_Arduino/_CURRENT/_MQTT/8266_mqtt_Sensor_bme280-008/.pio/libdeps/d1_mini/Adafruit BusIO"
+}
