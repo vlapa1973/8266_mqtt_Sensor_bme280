@@ -7,6 +7,7 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
+#include <ESP8266HTTPUpdateServer.h>
 #include <Wire.h>
 #include <Adafruit_BME280.h>
 Adafruit_BME280 bme;
@@ -22,15 +23,19 @@ const uint8_t pinBME280_SCL = 5;
 const uint8_t pinBME280_SDA = 4;
 const uint8_t pinBME280_gnd = 2;
 
+const uint8_t corrTemper = 1; // коррекция температуры bme280
+
+const uint8_t pinPROGR = 13; // D7;   //  программрование (при запуске на землю)
+
 // const char ssid[] = "MikroTik-2-ext";
 // const char ssid[] = "MikroTik-2_gar";
 const char ssid[] = "link";
 const char pass[] = "dkfgf#*12091997";
 
-// const char *mqtt_server = "94.103.87.97";
 const char *mqtt_server = "178.20.46.157";
 const uint16_t mqtt_port = 1883;
 const char *mqtt_client = "Home_bme280";
+const char *mqtt_client2 = "Home_bme280_prog";
 // const char *mqtt_client = "Villa_bme280_yama";
 // const char *mqtt_client = "Villa_bme280_base";
 const char *mqtt_user = "mqtt";
@@ -39,6 +44,7 @@ const char *mqtt_pass = "qwe#*1243";
 const char *outTopicTemp = "/Temp";
 const char *outTopicPres = "/Pres";
 const char *outTopicHum = "/Hum";
+const char *outTopicIP = "/IP";
 // const char *outTopicVcc = "/Vcc";
 
 const uint32_t pauseSleep = 30 * 1000 * 1000; //  30 секунд спим
@@ -67,7 +73,7 @@ inline bool mqtt_publish(PubSubClient &client, const String &topic, const String
 void mqtt_callback(char *topic, byte *payload, unsigned int length)
 {
   // for (uint8_t i = 0; i < length; i++)
-    // Serial.print((char)payload[i]);
+  // Serial.print((char)payload[i]);
   // Serial.print("Pres: ");
   // Serial.println();
 
@@ -141,26 +147,44 @@ void reconnect()
   }
 }
 
-// медианный фильтр из 3-ёх значений
-// float middle_of_3(float a, float b, float c)
-// {
-//   if ((a <= b) && (a <= c))
-//   {
-//     return (b <= c) ? b : c;
-//   }
-//   else
-//   {
-//     if ((b <= a) && (b <= c))
-//     {
-//       return (a <= c) ? a : c;
-//     }
-//     else
-//     {
-//       return (a <= b) ? a : b;
-//     }
-//   }
-//   // return middle;
-// }
+//**************************************************************
+// медиана на 3 значения со своим буфером
+// значение только uint32_t !
+uint32_t median(uint32_t newVal, uint8_t offSet)
+{
+  uint32_t count;
+  uint32_t buf[3];
+
+  ESP.rtcUserMemoryRead(offSet, &count, sizeof(count));
+  ESP.rtcUserMemoryWrite(count, &newVal, sizeof(newVal));
+
+  uint8_t k = 0;
+  for (uint8_t i = offSet - 3; i < offSet; ++i)
+  {
+    ESP.rtcUserMemoryRead(i, &buf[k], sizeof(buf[k]));
+    Serial.print(buf[k]);
+    Serial.print('\t');
+    k++;
+  }
+  // Serial.println();
+
+  if (++count >= offSet)
+  {
+    count = offSet - 3;
+    ESP.rtcUserMemoryWrite(offSet, &count, sizeof(count));
+  }
+  else
+  {
+    ESP.rtcUserMemoryWrite(offSet, &count, sizeof(count));
+  }
+
+  // uint32_t a = (max(buf[0], buf[1]) == max(buf[1], buf[2])) ? max(buf[0], buf[2]) : max(buf[1], min(buf[0], buf[2]));
+  // Serial.print("a = ");
+  // Serial.println(a);
+  return (max(buf[0], buf[1]) == max(buf[1], buf[2])) ? max(buf[0], buf[2]) : max(buf[1], min(buf[0], buf[2]));
+}
+
+//**************************************************************
 
 void setup()
 {
@@ -169,95 +193,110 @@ void setup()
   // Serial.println(millis());
   pinMode(pinBME280_gnd, OUTPUT);
   digitalWrite(pinBME280_gnd, LOW);
-
-  // pinMode(vccBme, OUTPUT);
-  // digitalWrite(pinBuiltinLed, HIGH);
-
-  // pinMode(analogInPin, INPUT);
+  pinMode(pinPROGR, INPUT_PULLUP);
+  delay(1);
 
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(mqtt_callback);
 
-  setupWiFi();
-  reconnect();
-
-  Wire.begin(pinBME280_SCL, pinBME280_SDA);
-  // Serial.print("bme280 test: ");
-  if (bme.begin(0x76))
+  if (digitalRead(pinPROGR))
   {
-    // Serial.println("OK !");
+    // pinMode(vccBme, OUTPUT);
+    // digitalWrite(pinBuiltinLed, HIGH);
+
+    // pinMode(analogInPin, INPUT);
+
+    Wire.begin(pinBME280_SCL, pinBME280_SDA);
+    // Serial.print("bme280 test: ");
+    // if (bme.begin(0x76))
+    // {
+    //   // Serial.println("OK !");
+    // }
+    // else
+    // {
+    //   // Serial.println("FALSE !");
+    // }
+
+    while (!bme.begin(0x76))
+    {
+      /* code */
+    }
+
+    uint32_t d1 = median((uint32_t)((bme.readTemperature() + corrTemper) * 100), 3);
+    uint32_t a1;
+    ESP.rtcUserMemoryRead(4, &a1, sizeof(a1));
+
+    if (a1 == d1)
+    {
+      pinMode(LED_BUILTIN, OUTPUT);
+      digitalWrite(LED_BUILTIN, LOW);
+      delay(1);
+      ESP.deepSleep(pauseSleep);
+    }
+    else
+    {
+      ESP.rtcUserMemoryWrite(4, &d1, sizeof(d1));
+    }
+
+    float t = d1 / 100.0;
+    uint32_t p = (bme.readPressure() * 0.75 / 100);
+    uint32_t h = bme.readHumidity();
+
+    setupWiFi();
+    reconnect();
+
+    // Serial.println();
+    String topic = "/";
+    topic += mqtt_client;
+    topic += outTopicTemp;
+    mqtt_publish(client, topic, (String)t);
+
+    topic = "/";
+    topic += mqtt_client;
+    topic += outTopicPres;
+    mqtt_publish(client, topic, (String)p);
+
+    topic = "/";
+    topic += mqtt_client;
+    topic += outTopicHum;
+    mqtt_publish(client, topic, (String)h);
+
+    delay(100);
+    digitalWrite(D4, HIGH);
+    ESP.deepSleep(pauseSleep);
   }
   else
   {
-    // Serial.println("FALSE !");
+    pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, LOW);
+
+    String topic = "/";
+    topic += mqtt_client2;
+    topic += outTopicIP;
+
+    setupWiFi();
+    reconnect();
+
+    mqtt_publish(client, topic, WiFi.localIP().toString());
+
+    ESP8266WebServer server(80);
+    ESP8266HTTPUpdateServer httpUpdater;
+    server.begin();
+    httpUpdater.setup(&server);
+
+    while (1)
+    {
+      server.handleClient();
+      client.loop();
+      delay(1);
+    }
   }
-
-  // Serial.println();
-  String topic = "/";
-  topic += mqtt_client;
-  topic += outTopicTemp;
-  float a = bme.readTemperature() + 1;
-  mqtt_publish(client, topic, (String)a);
-
-  topic = "/";
-  topic += mqtt_client;
-  topic += outTopicPres;
-  mqtt_publish(client, topic, (String)((uint32_t)(bme.readPressure() * 0.75 / 100)));
-
-  topic = "/";
-  topic += mqtt_client;
-  topic += outTopicHum;
-  mqtt_publish(client, topic, (String)(uint32_t)bme.readHumidity());
-
-  // float dist_3[3];
-  // float dist; //, dist_filtered, k;
-
-  // dist_3[0] = analogRead(analogInPin) * 4.1 / 1000;
-  // dist_3[1] = analogRead(analogInPin) * 4.1 / 1000;
-  // dist_3[2] = analogRead(analogInPin) * 4.1 / 1000;
-
-  // dist = middle_of_3(dist_3[0], dist_3[1], dist_3[2]);
-
-  // uint32_t distU32_3[3];
-  // uint32_t distU32;
-  // distU32_3[0] = analogRead(analogInPin);
-  // distU32_3[1] = analogRead(analogInPin);
-  // distU32_3[2] = analogRead(analogInPin);
-  // distU32 = middle_of_3(distU32_3[0], distU32_3[1], distU32_3[2]);
-
-  // for (uint8_t j = 2; j < 3; --j) {
-  //   ESP.rtcUserMemoryRead(1, ESP.rtcUserMemoryWrite(2, ))
-  // }
-
-  // ESP.rtcUserMemoryWrite(0, &distU32, sizeof(distU32));
-
-  // (abs(dist_filtered - dist) > 1) ? k = 0.3 : k = 0.1;
-  // dist_filtered = (dist * k + dist_filtered * (1 - k)) * 1.4208; // фильтр "бегущее среднее"
-
-  // Serial.println(dist);
-
-  // topic = "/";
-  // topic += mqtt_client;
-  // topic += outTopicVcc;
-  // mqtt_publish(client, topic, (String)dist);
-
-  // digitalWrite(pinBuiltinLed, HIGH);
-  // Serial.println("\nESP sleep in 30s.....");
-
-  // digitalWrite(4, LOW);
-  // digitalWrite(5, LOW);
-  // Serial.print("\nEND: ");
-  // Serial.println(millis() + 20);
-  delay(300);
-  digitalWrite(D4, HIGH);
-  ESP.deepSleep(pauseSleep);
 }
 
 void loop()
 {
   // float voltage = (float)(analogRead(analogInPin) * 4.1 / 1000);
   // Serial.println(voltage);
-
   // String topic = "/";
   // topic += mqtt_client;
   // topic += outTopicVcc;
