@@ -1,7 +1,7 @@
 /*
     MQTT sensor BME280
-    20220628-20230103
-    = Vlapa =  v.008
+    20220628-20230514
+    = Vlapa =  v.000
 */
 
 #include <Arduino.h>
@@ -45,7 +45,7 @@ const char *outTopicTemp = "/Temp";
 const char *outTopicPres = "/Pres";
 const char *outTopicHum = "/Hum";
 const char *outTopicIP = "/IP";
-// const char *outTopicVcc = "/Vcc";
+const char *outTopicVcc = "/Vcc";
 
 const uint32_t pauseSleep = 30 * 1000 * 1000; //  30 секунд спим
 
@@ -188,9 +188,9 @@ uint32_t median(uint32_t newVal, uint8_t offSet)
 
 void setup()
 {
-  // Serial.begin(115200);
-  // Serial.print("\n\nSTART: ");
-  // Serial.println(millis());
+  Serial.begin(115200);
+  Serial.print("\n\nSTART: ");
+  Serial.println(millis());
   pinMode(pinBME280_gnd, OUTPUT);
   digitalWrite(pinBME280_gnd, LOW);
   pinMode(pinPROGR, INPUT_PULLUP);
@@ -238,6 +238,13 @@ void setup()
       ESP.rtcUserMemoryWrite(4, &d1, sizeof(d1));
     }
 
+    delay(1);
+    float u = (1.0 / 1023) * analogRead(A0) * 4.200;
+    uint32_t u1 = u * 100;
+    float u2 = median(u1, 16) / 100.0;
+    Serial.print("U1 = ");
+    Serial.println(u2);
+
     float t = d1 / 100.0;
     uint32_t p = (bme.readPressure() * 0.75 / 100);
     uint32_t h = bme.readHumidity();
@@ -245,7 +252,7 @@ void setup()
     setupWiFi();
     reconnect();
 
-    // Serial.println();
+    Serial.println();
     String topic = "/";
     topic += mqtt_client;
     topic += outTopicTemp;
@@ -260,6 +267,11 @@ void setup()
     topic += mqtt_client;
     topic += outTopicHum;
     mqtt_publish(client, topic, (String)h);
+
+    topic = "/";
+    topic += mqtt_client;
+    topic += outTopicVcc;
+    mqtt_publish(client, topic, (String)u2);
 
     delay(100);
     digitalWrite(D4, HIGH);
