@@ -23,7 +23,7 @@ const uint8_t pinBME280_SCL = 5;
 const uint8_t pinBME280_SDA = 4;
 const uint8_t pinBME280_gnd = 2;
 
-const uint8_t corrTemper = 1; // коррекция температуры bme280
+const float corrTemper = 0.4; // коррекция температуры bme280_yama
 
 const uint8_t pinPROGR = 13; // D7;   //  программрование (при запуске на землю)
 
@@ -34,9 +34,9 @@ const char pass[] = "dkfgf#*12091997";
 
 const char *mqtt_server = "178.20.46.157";
 const uint16_t mqtt_port = 1883;
-const char *mqtt_client = "Home_bme280";
-const char *mqtt_client2 = "Home_bme280_prog";
-// const char *mqtt_client = "Villa_bme280_yama";
+// const char *mqtt_client = "Home_bme280";
+const char *mqtt_client2 = "Sensor_bme280_prog";
+const char *mqtt_client = "Villa_bme280_yama-2";
 // const char *mqtt_client = "Villa_bme280_base";
 const char *mqtt_user = "mqtt";
 const char *mqtt_pass = "qwe#*1243";
