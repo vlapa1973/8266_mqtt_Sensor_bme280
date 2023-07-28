@@ -12,7 +12,7 @@
 #include <Adafruit_BME280.h>
 Adafruit_BME280 bme;
 
-// const uint8_t pinBuiltinLed = D4;
+const uint8_t pinBuiltinLed = D4;
 const uint8_t pinBME280_SCL = 5;
 const uint8_t pinBME280_SDA = 4;
 const uint8_t pinBME280_gnd = 2;
@@ -272,7 +272,7 @@ void setup()
     mqtt_publish(client, topic, (String)u2);
 
     delay(pauseOut);
-    digitalWrite(D4, HIGH);
+    digitalWrite(pinBuiltinLed, HIGH);
     ESP.deepSleep(pauseSleep);
   }
   else
