@@ -1,7 +1,7 @@
 /*
     MQTT sensor BME280
-    20220628-20230514
-    = Vlapa =  v.000
+    20220628-20230728
+    = Vlapa =  v.009
 */
 
 #include <Arduino.h>
@@ -28,9 +28,9 @@ const char pass[] = "dkfgf#*12091997";
 
 const char *mqtt_server = "178.20.46.157";
 const uint16_t mqtt_port = 1883;
-// const char *mqtt_client = "Home_bme280";
+const char *mqtt_client = "Home_bme280";
 const char *mqtt_client2 = "Sensor_bme280_prog";
-const char *mqtt_client = "Villa_bme280_yama-2";
+// const char *mqtt_client = "Villa_bme280_yama-2";
 // const char *mqtt_client = "Villa_bme280_base";
 const char *mqtt_user = "mqtt";
 const char *mqtt_pass = "qwe#*1243";
