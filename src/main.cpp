@@ -42,7 +42,7 @@ const char *outTopicIP = "/IP";
 const char *outTopicVcc = "/Vcc";
 
 const uint32_t pauseSleep = 30 * 1000 * 1000; //  30 секунд спим
-const uint16_t pauseOut = 200;
+const uint16_t pauseOut = 200;    //  пауза после отправки, до засыпания
 
 WiFiClient espClient;
 PubSubClient client(espClient);
