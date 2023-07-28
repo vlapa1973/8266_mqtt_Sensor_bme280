@@ -42,6 +42,7 @@ const char *outTopicIP = "/IP";
 const char *outTopicVcc = "/Vcc";
 
 const uint32_t pauseSleep = 30 * 1000 * 1000; //  30 секунд спим
+const uint16_t pauseOut = 200;
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -270,7 +271,7 @@ void setup()
     topic += outTopicVcc;
     mqtt_publish(client, topic, (String)u2);
 
-    delay(200);
+    delay(pauseOut);
     digitalWrite(D4, HIGH);
     ESP.deepSleep(pauseSleep);
   }
