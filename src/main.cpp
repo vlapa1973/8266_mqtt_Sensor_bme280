@@ -12,12 +12,6 @@
 #include <Adafruit_BME280.h>
 Adafruit_BME280 bme;
 
-// extern "C"
-// {
-// #include "user_interface.h"
-//   extern struct rst_info resetInfo;
-// }
-
 // const uint8_t pinBuiltinLed = D4;
 const uint8_t pinBME280_SCL = 5;
 const uint8_t pinBME280_SDA = 4;
@@ -257,23 +251,26 @@ void setup()
     topic += mqtt_client;
     topic += outTopicTemp;
     mqtt_publish(client, topic, (String)t);
+    delay(10);
 
     topic = "/";
     topic += mqtt_client;
     topic += outTopicPres;
     mqtt_publish(client, topic, (String)p);
-
+    delay(10);
+      
     topic = "/";
     topic += mqtt_client;
     topic += outTopicHum;
     mqtt_publish(client, topic, (String)h);
-
+    delay(10);
+      
     topic = "/";
     topic += mqtt_client;
     topic += outTopicVcc;
     mqtt_publish(client, topic, (String)u2);
 
-    delay(100);
+    delay(200);
     digitalWrite(D4, HIGH);
     ESP.deepSleep(pauseSleep);
   }
