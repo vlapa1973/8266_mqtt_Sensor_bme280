@@ -17,18 +17,21 @@ const uint8_t pinBME280_SCL = 5;
 const uint8_t pinBME280_SDA = 4;
 const uint8_t pinBME280_gnd = 2;
 
-const float corrTemper = 0.4; // коррекция температуры bme280_yama
+const float corrTemper = 0.0; // коррекция температуры bme280_yama
 
 const uint8_t pinPROGR = 13; // D7;   //  программрование (при запуске на землю)
 
 // const char ssid[] = "MikroTik-2-ext";
 // const char ssid[] = "MikroTik-2_gar";
-const char ssid[] = "link";
-const char pass[] = "dkfgf#*12091997";
+// const char ssid[] = "link";
+// const char pass[] = "dkfgf#*12091997";
+
+const char ssid[] = "Elite_pers";
+const char pass[] = "88888885";
 
 const char *mqtt_server = "178.20.46.157";
 const uint16_t mqtt_port = 1883;
-const char *mqtt_client = "Home_bme280";
+const char *mqtt_client = "Home_bme280_002";
 const char *mqtt_client2 = "Sensor_bme280_prog";
 // const char *mqtt_client = "Villa_bme280_yama-2";
 // const char *mqtt_client = "Villa_bme280_base";
@@ -42,7 +45,7 @@ const char *outTopicIP = "/IP";
 const char *outTopicVcc = "/Vcc";
 
 const uint32_t pauseSleep = 30 * 1000 * 1000; //  30 секунд спим
-const uint16_t pauseOut = 200;    //  пауза после отправки, до засыпания
+const uint16_t pauseOut = 200;                //  пауза после отправки, до засыпания
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -103,8 +106,8 @@ void setupWiFi()
 {
   uint8_t wifiCount = 20;
   WiFi.begin(ssid, pass);
-  // Serial.print("Connection to:  ");
-  // Serial.println(ssid);
+  Serial.print("Connection to:  ");
+  Serial.println(ssid);
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(300);
@@ -118,8 +121,8 @@ void setupWiFi()
       ESP.deepSleep(pauseSleep);
     }
   }
-  // Serial.print("\nConnected !\tIP: ");
-  // Serial.println(WiFi.localIP());
+  Serial.print("\nConnected !\tIP: ");
+  Serial.println(WiFi.localIP());
 }
 
 void reconnect()
@@ -202,19 +205,14 @@ void setup()
     // pinMode(analogInPin, INPUT);
 
     Wire.begin(pinBME280_SCL, pinBME280_SDA);
-    // Serial.print("bme280 test: ");
-    // if (bme.begin(0x76))
-    // {
-    //   // Serial.println("OK !");
-    // }
-    // else
-    // {
-    //   // Serial.println("FALSE !");
-    // }
-
-    while (!bme.begin(0x76))
+    Serial.print("bme280 test: ");
+    if (bme.begin(0x76))
     {
-      /* code */
+      Serial.println("OK !");
+    }
+    else
+    {
+      Serial.println("FALSE !");
     }
 
     uint32_t d1 = median((uint32_t)((bme.readTemperature() + corrTemper) * 100), 3);
@@ -259,13 +257,13 @@ void setup()
     topic += outTopicPres;
     mqtt_publish(client, topic, (String)p);
     delay(10);
-      
+
     topic = "/";
     topic += mqtt_client;
     topic += outTopicHum;
     mqtt_publish(client, topic, (String)h);
     delay(10);
-      
+
     topic = "/";
     topic += mqtt_client;
     topic += outTopicVcc;
